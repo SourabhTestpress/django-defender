@@ -9,6 +9,10 @@ from django.core.exceptions import ValidationError
 from .connection import get_redis_connection
 from . import config
 from .data import store_login_attempt
+from django.contrib.auth import get_user_model
+from django.db.models import Q
+
+User = get_user_model()
 
 REDIS_SERVER = get_redis_connection()
 
@@ -119,7 +123,12 @@ def increment_key(key):
 def get_username_from_request(request):
     """ unloads username from default POST request """
     if config.USERNAME_FORM_FIELD in request.POST:
-        return request.POST[config.USERNAME_FORM_FIELD][:255]
+        username = request.POST[config.USERNAME_FORM_FIELD][:255]
+        try:
+            user = User.objects.get(Q(username__iexact=username) | Q(email__iexact=username))
+            return request.institute.subdomain + "_" + str(user.id)
+        except User.DoesNotExist:
+            return username
     return None
 
 
